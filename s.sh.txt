@@ -1,0 +1,1 @@
+gcc -Wall -lm main.c state.c grover.c -o grover
