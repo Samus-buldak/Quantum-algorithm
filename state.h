@@ -13,7 +13,11 @@ typedef struct {
 typedef struct {
     int n_qubits;          // число кубитов
     int size;              // полное число состояний = 2^n_qubits
-    Entry *entries;        // массив ненулевых записей
+    int is_dense;             // 1 -> плотный массив, 0 -> разреженный
+    union {
+        Entry *entries;       // разреженный: массив ненулевых
+        double complex *dense; // плотный: массив всех амплитуд
+    } data;
     int count;             // сколько сейчас записей
     double epsilon;        // порог отсечения (1e-10)
 } SparseState;
@@ -35,5 +39,11 @@ double norm_sq(SparseState *s);
 
 // Напечатать все ненулевые амплитуды (для отладки)
 void print_state(SparseState *s);
+
+// Преобразование разреженного -> плотный массив (выделяет новую память)
+double complex* sparse_to_dense_array(SparseState *s);
+
+// Заменить разреженное состояние на плотное (принимает владение над массивом 'dense')
+void convert_to_dense(SparseState *s, double complex *dense);
 
 #endif
