@@ -104,3 +104,74 @@ void apply_hadamard_all(SparseState *s) {
         }
     }
 }
+
+// Вспомогательная функция: БПФ (бабочка) для плотного массива
+// sign = 1 для ядра exp(+2πi·...), sign = -1 для exp(-2πi·...)
+static void fft_core(double complex *state, int n, int sign) {
+    int N = 1 << n;
+    // Битово-инверсная перестановка
+    for (int i = 0; i < N; i++) {
+        int rev = 0;
+        for (int b = 0; b < n; b++) {
+            if (i & (1 << b))
+                rev |= (1 << (n - 1 - b));
+        }
+        if (i < rev) {
+            double complex tmp = state[i];
+            state[i] = state[rev];
+            state[rev] = tmp;
+        }
+    }
+
+    // Итеративные бабочки
+    for (int len = 2; len <= N; len <<= 1) {
+        double angle = sign * 2.0 * M_PI / len;
+        double complex wlen = cos(angle) + I * sin(angle);
+        for (int i = 0; i < N; i += len) {
+            double complex w = 1.0;
+            for (int j = 0; j < len / 2; j++) {
+                double complex u = state[i + j];
+                double complex v = state[i + j + len / 2] * w;
+                state[i + j] = u + v;
+                state[i + j + len / 2] = u - v;
+                w *= wlen;
+            }
+        }
+    }
+}
+
+// Прямое или обратное квантовое преобразование Фурье
+void apply_qft(SparseState *s, int inverse) {
+    if (!s) return;
+
+    // Для n > 20 QFT не реализовано в разреженном виде (станет плотным)
+    if (!s->is_dense) {
+        // Если разреженное состояние, но число кубитов ≤20 – преобразуем в плотное
+        if (s->n_qubits <= 20 && s->size <= (1 << 20)) {
+            double complex *dense = sparse_to_dense_array(s);
+            if (!dense) {
+                fprintf(stderr, "Ошибка памяти при преобразовании в плотное состояние\n");
+                return;
+            }
+            convert_to_dense(s, dense);
+        } else {
+            fprintf(stderr, "QFT поддерживается только для плотного состояния (n ≤ 20)\n");
+            return;
+        }
+    }
+
+    // Теперь состояние плотное
+    double complex *state = s->data.dense;
+    int n = s->n_qubits;
+    int N = s->size;
+
+    // Выбор знака: прямое QFT использует exp(+2πi·xy/N), обратное – exp(-2πi·xy/N)
+    int sign = inverse ? -1 : 1;
+    fft_core(state, n, sign);
+
+    // Нормировка: обе формулы содержат множитель 1/√N
+    double inv_sqrtN = 1.0 / sqrt(N);
+    for (int i = 0; i < N; i++) {
+        state[i] *= inv_sqrtN;
+    }
+}

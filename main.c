@@ -22,7 +22,22 @@ int main() {
     apply_hadamard_all(state);
     print_state(state);
     printf("Квадрат нормы: %.10f\n", norm_sq(state));
-    
+
+    SparseState *s = create_state(n);  // |0⟩
+    printf("Начальное состояние:\n");
+    print_state(s);
+
+    // Применяем QFT для демонстрации
+    apply_qft(s, 0);   // прямое QFT
+    printf("\nПосле прямого QFT:\n");
+    print_state(s);
+
+    // Обратное QFT должно вернуть исходное состояние
+    apply_qft(s, 1);   // обратное QFT
+    printf("\nПосле обратного QFT (должно быть исходное |0⟩):\n");
+    print_state(s);
+
+    free_state(s);
     free_state(state);
     return 0;
 }

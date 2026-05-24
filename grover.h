@@ -11,4 +11,8 @@
 // Функция применения гейта Адамара ко всем кубитам (H⊗n)
 void apply_hadamard_all(SparseState *s);
 
+// Применение квантового преобразования Фурье (QFT) ко всем кубитам
+// inverse = 0 -> прямое QFT, inverse = 1 -> обратное QFT
+void apply_qft(SparseState *s, int inverse);
+
 #endif
