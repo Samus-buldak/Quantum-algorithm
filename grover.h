@@ -15,4 +15,7 @@ void apply_hadamard_all(SparseState *s);
 // inverse = 0 -> прямое QFT, inverse = 1 -> обратное QFT
 void apply_qft(SparseState *s, int inverse);
 
+// Функция диффузии Гровера (отражение относительно среднего)
+void apply_diffusion(SparseState *s);
+
 #endif

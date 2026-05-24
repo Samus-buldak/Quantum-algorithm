@@ -175,3 +175,39 @@ void apply_qft(SparseState *s, int inverse) {
         state[i] *= inv_sqrtN;
     }
 }
+
+void apply_diffusion(SparseState *s) {
+    if (!s) return;
+
+    // Для n > 20 разреженное состояние не поддерживает эффективную диффузию
+    if (!s->is_dense) {
+        if (s->n_qubits <= 20) {
+            // Преобразуем в плотное (станет размер 2^n, для n≤20 это OK)
+            double complex *dense = sparse_to_dense_array(s);
+            if (!dense) {
+                fprintf(stderr, "Ошибка памяти в apply_diffusion\n");
+                return;
+            }
+            convert_to_dense(s, dense);
+        } else {
+            fprintf(stderr, "Диффузия не поддерживается для разреженного состояния с n > 20\n");
+            return;
+        }
+    }
+
+    // Теперь состояние плотное
+    int N = s->size;
+    double complex *a = s->data.dense;
+
+    // Вычисляем среднюю амплитуду
+    double complex sum = 0.0;
+    for (int i = 0; i < N; i++) {
+        sum += a[i];
+    }
+    double complex avg = sum / N;
+
+    // Отражение относительно среднего
+    for (int i = 0; i < N; i++) {
+        a[i] = 2.0 * avg - a[i];
+    }
+}
