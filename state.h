@@ -46,4 +46,6 @@ double complex* sparse_to_dense_array(SparseState *s);
 // Заменить разреженное состояние на плотное (принимает владение над массивом 'dense')
 void convert_to_dense(SparseState *s, double complex *dense);
 
+int count_nonzero(SparseState *s);
+
 #endif

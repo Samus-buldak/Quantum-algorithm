@@ -163,3 +163,15 @@ void convert_to_dense(SparseState *s, double complex *dense) {
     s->data.dense = dense;
     s->count = s->size;
 }
+
+int count_nonzero(SparseState *s) {
+    if (s->is_dense) {
+        int cnt = 0;
+        for (int i = 0; i < s->size; i++) {
+            if (cabs(s->data.dense[i]) >= s->epsilon) cnt++;
+        }
+        return cnt;
+    } else {
+        return s->count; // уже хранится
+    }
+}
