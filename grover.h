@@ -18,4 +18,6 @@ void apply_qft(SparseState *s, int inverse);
 // Функция диффузии Гровера (отражение относительно среднего)
 void apply_diffusion(SparseState *s);
 
+int measure(SparseState *s, double *probability);
+
 #endif

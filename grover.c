@@ -211,3 +211,51 @@ void apply_diffusion(SparseState *s) {
         a[i] = 2.0 * avg - a[i];
     }
 }
+
+// Измерение состояния: возвращает измеренный индекс и его вероятность (через указатель)
+int measure(SparseState *s, double *probability) {
+    if (!s) return -1;
+    
+    // Получаем массив вероятностей
+    int N = s->size;
+    double *probs = malloc(N * sizeof(double));
+    if (!probs) {
+        fprintf(stderr, "Ошибка памяти при измерении\n");
+        return -1;
+    }
+    
+    double total = 0.0;
+    if (s->is_dense) {
+        for (int i = 0; i < N; i++) {
+            double p = cabs(s->data.dense[i]);
+            probs[i] = p * p;
+            total += probs[i];
+        }
+    } else {
+        // Разреженное состояние: сначала обнуляем массив вероятностей
+        for (int i = 0; i < N; i++) probs[i] = 0.0;
+        for (int i = 0; i < s->count; i++) {
+            double p = cabs(s->data.entries[i].amp);
+            probs[s->data.entries[i].index] = p * p;
+            total += p * p;
+        }
+    }
+    
+    // Нормировка (на всякий случай, если норма не 1 из-за ошибок)
+    if (total == 0.0) total = 1.0;
+    
+    // Генерируем случайное число и выбираем состояние
+    double r = (double)rand() / RAND_MAX;
+    double cum = 0.0;
+    int result = -1;
+    for (int i = 0; i < N; i++) {
+        cum += probs[i] / total;
+        if (r <= cum) {
+            result = i;
+            if (probability) *probability = probs[i] / total;
+            break;
+        }
+    }
+    free(probs);
+    return result;
+}
