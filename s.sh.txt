@@ -1,1 +1,4 @@
 gcc -Wall -lm main.c state.c grover.c -o grover
+
+ls -l state_mmap_*
+lsof | grep grover

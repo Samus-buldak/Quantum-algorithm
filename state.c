@@ -3,6 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
 
 // Создание состояния |0⟩: для n<=20 сразу плотное, для n>20 разреженное
 SparseState* create_state(int n_qubits) {
@@ -11,9 +15,11 @@ SparseState* create_state(int n_qubits) {
     s->n_qubits = n_qubits;
     s->size = 1 << n_qubits;
     s->epsilon = 1e-10;
-    
+    s->is_mmap = 0;
+    s->mmap_filename = NULL;
+
     if (n_qubits <= 20) {
-        // Плотное представление
+        // Плотное состояние в оперативной памяти
         s->is_dense = 1;
         s->data.dense = calloc(s->size, sizeof(double complex));
         if (!s->data.dense) {
@@ -21,27 +27,66 @@ SparseState* create_state(int n_qubits) {
             return NULL;
         }
         s->data.dense[0] = 1.0;
-        s->count = s->size; // условно, но не используется для плотного
+        s->count = s->size;
     } else {
-        // Разреженное представление
-        s->is_dense = 0;
-        s->data.entries = malloc(16 * sizeof(Entry)); // начальная ёмкость
-        if (!s->data.entries) {
+        // Для n > 20 используем mmap (дисковое хранилище)
+        // Создаём временный файл с уникальным именем (можно фиксированное, но лучше mkstemp)
+        char template[] = "state_mmap_XXXXXX";
+        int fd = mkstemp(template);
+        if (fd == -1) {
+            perror("mkstemp");
             free(s);
             return NULL;
         }
-        s->count = 0;
-        set_amp(s, 0, 1.0);
+        size_t file_size = (size_t)s->size * sizeof(double complex);
+        if (ftruncate(fd, file_size) == -1) {
+            perror("ftruncate");
+            close(fd);
+            free(s);
+            return NULL;
+        }
+        void *ptr = mmap(NULL, file_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        if (ptr == MAP_FAILED) {
+            perror("mmap");
+            close(fd);
+            free(s);
+            return NULL;
+        }
+        close(fd); // файл можно закрыть, отображение остаётся
+        // Заполняем нулями и устанавливаем |0⟩
+        memset(ptr, 0, file_size);
+        ((double complex*)ptr)[0] = 1.0;
+
+        s->is_dense = 1;
+        s->data.dense = ptr;
+        s->count = s->size;
+        s->is_mmap = 1;
+        s->mmap_filename = strdup(template);
+        if (!s->mmap_filename) {
+            munmap(ptr, file_size);
+            free(s);
+            return NULL;
+        }
     }
     return s;
 }
 
 void free_state(SparseState *s) {
     if (s) {
-        if (s->is_dense)
-            free(s->data.dense);
-        else
+        if (s->is_dense) {
+            if (s->is_mmap) {
+                size_t size = (size_t)s->size * sizeof(double complex);
+                munmap(s->data.dense, size);
+                if (s->mmap_filename) {
+                    remove(s->mmap_filename); // удаляем временный файл
+                    free(s->mmap_filename);
+                }
+            } else {
+                free(s->data.dense);
+            }
+        } else {
             free(s->data.entries);
+        }
         free(s);
     }
 }

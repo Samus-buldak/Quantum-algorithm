@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #ifndef STATE_H
 #define STATE_H
 
@@ -20,6 +22,8 @@ typedef struct {
     } data;
     int count;             // сколько сейчас записей
     double epsilon;        // порог отсечения (1e-10)
+    int is_mmap;               // 1 – состояние хранится в mmap-файле
+    char *mmap_filename;       // имя файла для mmap (если используется)
 } SparseState;
 
 // Создать состояние |0⟩ (одна запись с индексом 0 и амплитудой 1)
