@@ -15,7 +15,7 @@ int main() {
     scanf("%d", &target);
     
     freopen("output.txt", "w", stdout);
-    
+    srand(time(NULL));
     printf("=== Симуляция квантового алгоритма Гровера ===\n");
     printf("n = %d, N = %d, target = %d\n", n, N, target);
     
